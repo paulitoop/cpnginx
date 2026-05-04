@@ -1,0 +1,29 @@
+---
+name: test-client-mtls01
+targets:
+  - test-server-mtls01.test
+ports:
+  - tls/443
+cert_client:
+cert_client_serial:
+layers:
+  - type: CLB
+    dst:
+      - cpnginx-client-srv01.test
+      - cpnginx-client-srv02.test
+      - cpnginx-client-srv03.test
+      - cpnginx-client-srv04.test
+    ports:
+      - tcp/49700
+  - type: LB
+    dst:
+      - balancer-srv01.test
+      - balancer-srv02.test
+      - balancer-srv03.test
+      - balancer-srv04.test
+    vip: 192.168.0.2
+    ports:
+      - tcp/443
+
+expiration: 2026-05-03
+comment: "Интеграция с партнером ООО 'Технологии'"
