@@ -1,9 +1,9 @@
 ---
 name: test-client-mtls01
 targets:
-  - test-server-mtls01.test
+  - cpnginx.corp.ru
 ports:
-  - tls/443
+  - tls/5101
 cert_client:
 cert_client_serial:
 layers:
@@ -14,7 +14,7 @@ layers:
       - cpnginx-client-srv03.test
       - cpnginx-client-srv04.test
     ports:
-      - tcp/49700
+      - tcp/10443
   - type: LB
     dst:
       - balancer-srv01.test
@@ -26,4 +26,4 @@ layers:
       - tcp/443
 
 expiration: 2026-05-03
-comment: "Интеграция с партнером ООО 'Технологии'"
+comment: "НИР: демонстрация доступа к mTLS-сервису через cpnginx"
