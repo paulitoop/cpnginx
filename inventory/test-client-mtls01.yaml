@@ -3,7 +3,7 @@ name: test-client-mtls01
 targets:
   - cpnginx.corp.ru
 ports:
-  - tls/5101
+  - tls/5100
 cert_client:
 cert_client_serial:
 layers:
