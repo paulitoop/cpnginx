@@ -3,9 +3,9 @@ name: test-client-mtls01
 targets:
   - cpnginx.corp.ru
 ports:
-  - tls/5100
-cert_client:
-cert_client_serial:
+  - tls/5101
+cert_client: Secrets/data/cpnginx/cpnginx-client-test-2026
+cert_client_serial: 7c0032e4c51100ec81c5fa2cfe00130032e4c5
 layers:
   - type: CLB
     dst:
