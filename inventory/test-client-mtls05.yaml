@@ -14,7 +14,7 @@ layers:
       - cpnginx-client-srv03.test
       - cpnginx-client-srv04.test
     ports:
-      - tcp/14443
+      - tcp/34443
   - type: LB
     dst:
       - balancer-srv01.test
