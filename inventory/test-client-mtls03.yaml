@@ -1,0 +1,29 @@
+---
+name: test-client-mtls03
+targets: 
+  - cpnginx.corp.ru
+ports:
+  - tls/5101
+cert_client: Secrets/data/cpnginx/cpnginx-test-client-2026
+cert_client_serial: 7c0032e4c51100ec81c5fa2cfe00130032e4c5
+layers:
+  - type: CLB
+    dst:
+      - cpnginx-client-srv01.test
+      - cpnginx-client-srv02.test
+      - cpnginx-client-srv03.test
+      - cpnginx-client-srv04.test
+    ports:
+      - tcp/12443
+  - type: LB
+    dst:
+      - balancer-srv01.test
+      - balancer-srv02.test
+      - balancer-srv03.test
+      - balancer-srv04.test
+    vip: 192.168.0.2
+    ports:
+      - tcp/443
+
+expiration: 18-05-2027
+comment: "Тестовая интеграция для НИР"
