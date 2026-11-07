@@ -22,6 +22,7 @@ RUN mkdir /tmp/csp && tar -xzf /tmp/csp.tgz -C /tmp/csp --strip-components=1 \
 ENV PATH="/opt/cprocsp/bin/amd64:/opt/cprocsp/sbin/amd64:${PATH}"
 COPY docker/node-entrypoint.sh /usr/local/bin/node-entrypoint
 COPY docker/partner.py /usr/local/bin/lab-partner.py
+COPY docker/lab_license.py /usr/local/bin/lab_license.py
 COPY docker/generate-certificates.py /usr/local/bin/generate-certificates.py
 COPY docker/init-rng.py /usr/local/bin/init-rng.py
 COPY files/cpnginx.conf /etc/opt/cprocsp/cpnginx/cpnginx.conf

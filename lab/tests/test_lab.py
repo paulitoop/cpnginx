@@ -63,5 +63,27 @@ class LaboratoryRngTests(unittest.TestCase):
             self.assertEqual(record[32:], struct.pack('<I', zlib.crc32(record[:32])))
 
 
+class LicenseDiagnosticsTests(unittest.TestCase):
+    def test_error_never_echoes_license_or_raw_cli_output(self):
+        import subprocess
+        from types import SimpleNamespace
+        spec = importlib.util.spec_from_file_location('lab_license', Path(__file__).resolve().parents[1]/'docker/lab_license.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        private = 'LOCAL-PRIVATE-LICENSE-VALUE'
+        outcomes = [
+            SimpleNamespace(returncode=32, stdout=private+' License expired or not yet valid.', stderr=''),
+            SimpleNamespace(returncode=1, stdout='Rejected '+private, stderr=''),
+            subprocess.TimeoutExpired(['cpconfig', '-license', '-set', private], 15),
+        ]
+        for outcome in outcomes:
+            options = {'side_effect': outcome} if isinstance(outcome, Exception) else {'return_value': outcome}
+            with self.subTest(outcome=type(outcome).__name__), patch.object(module.subprocess, 'run', **options):
+                with self.assertRaises(RuntimeError) as error:
+                    module.install_license(private)
+                self.assertNotIn(private, str(error.exception))
+                self.assertNotIn('Rejected', str(error.exception))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,10 +1,10 @@
 """Import only the partner's server key and start the strict test endpoints."""
-import json
 from pathlib import Path
 import re
 import subprocess
 import os
 from jinja2 import Template
+from lab_license import install_license
 
 def run(args):
     result = subprocess.run(args, input='o\n' if 'uRoot' in args else '', capture_output=True, text=True)
@@ -17,10 +17,7 @@ subprocess.run(['python3', '/usr/local/bin/init-rng.py'], check=True)
 license_path = Path('/run/lab/server.license')
 license_value = license_path.read_text().strip() if license_path.is_file() else ''
 if license_value:
-    result = subprocess.run(['/opt/cprocsp/sbin/amd64/cpconfig', '-license', '-set', license_value],
-                            capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError('The supplied CryptoPro TLS server license was not accepted; value is hidden')
+    install_license(license_value)
 else:
     print('No TLS Server license supplied. Demo CSP may reject server handshakes. See prepare --license-file.', flush=True)
 
