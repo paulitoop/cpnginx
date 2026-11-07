@@ -1,0 +1,20 @@
+server {
+    listen 5100 sspi;
+    sspi_certificate {{ serial }};
+    sspi_protocols TLSv1.2;
+    location / { default_type text/plain; return 200 "TLS control works\n"; }
+}
+server {
+    listen 5101 sspi;
+    sspi_certificate {{ serial }};
+    sspi_protocols TLSv1.2;
+    sspi_client_certificate Root;
+    sspi_verify_client on;
+    sspi_client_verify_local_crl_only on;
+    location = /mtls {
+        default_type text/html;
+        charset utf-8;
+        return 200 '<!doctype html><html lang="ru"><meta charset="utf-8"><title>mTLS OK</title><h1>Доступ через ГОСТ mTLS</h1><p>Клиентский сертификат успешно проверен.</p></html>';
+    }
+    location / { return 404; }
+}

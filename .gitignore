@@ -22,3 +22,10 @@ lab/playground/client/certs/*/
 !lab/playground/client/certs/ca/
 lab/playground/server/certs/*/
 !lab/playground/server/certs/ca/
+*.license
+*.pin
+pins.json
+vault-payload.json
+vault-init.json
+approle.json
+.lab-state/

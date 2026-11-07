@@ -1,0 +1,8 @@
+name: test-client-mtls05
+target_host: cpnginx.corp.ru
+target_port: 5101
+listen_port: 34443
+cert_client: Secrets/data/cpnginx/cpnginx-test-client-2026-2
+cert_client_serial: 7c00332364843acf14387f2b58001300332364
+expiration: 18-05-2027
+comment: Тестовая интеграция для НИР

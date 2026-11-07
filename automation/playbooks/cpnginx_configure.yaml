@@ -9,10 +9,9 @@
     cpnginx_configure_gitlab_configs_url: https://github.com/paulitoop/cpnginx.git
     cpnginx_configure_gitlab_configs_version: main
     cpnginx_configure_gitlab_dir: /tmp/cpnginx-configs
-    cpnginx_configure_gitlab_configs_dir: "{{ cpnginx_configure_gitlab_dir }}/inventory"
+    cpnginx_configure_gitlab_configs_dir: "{{ cpnginx_configure_gitlab_dir }}/integrations/demo"
     cpnginx_configure_gitlab_ca_certs_dir: "{{ cpnginx_configure_gitlab_dir }}/certs/ca"
     cpnginx_configure_gitlab_subca_certs_dir: "{{ cpnginx_configure_gitlab_dir }}/certs/subca"
-    cpnginx_configure_resolve_dns: false
 
     cpnginx_configure_default_conf: "{{ playbook_dir }}/../files/default.conf"
     cpnginx_configure_cpnginx_conf: "{{ playbook_dir }}/../files/cpnginx.conf"
