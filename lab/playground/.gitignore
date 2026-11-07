@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# PFX files (private keys)
+*.pfx
+server/keys/*.pfx
+client/keys/*.pfx
+
+# Certificates (except CA)
+server/certs/**
+!server/certs/**/ca/
+!server/certs/**/ca/**
+client/certs/**
+!client/certs/**/ca/
+!client/certs/**/ca/**
+
+# Keep only CA certificates
+!server/certs/ca/
+!client/certs/ca/
+
+# Environment files
+.env
+.env.*
+!.env.example
+server/.env
+client/.env
+!.env.example
+
+# Logs
+*.log
+logs/
+server/cpnginx/*.log
+client/cpnginx/*.log
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

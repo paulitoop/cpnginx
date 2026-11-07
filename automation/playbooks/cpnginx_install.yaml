@@ -1,0 +1,7 @@
+- name: Install CryptoPro Nginx on lab proxy hosts
+  hosts: cpnginx
+  become: true
+  tasks:
+    - name: Install cpnginx
+      ansible.builtin.import_role:
+        name: cryptogates.cpnginx_install

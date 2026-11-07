@@ -1,0 +1,43 @@
+- name: Установка и настройка КриптоПро Nginx
+  hosts: cpnginx
+  become: true
+  vars:
+    cpnginx_configure_vault_addr: "{{ lookup('env', 'VAULT_ADDR') }}"
+
+
+    cpnginx_configure_git_clone_enabled: true
+    cpnginx_configure_gitlab_configs_url: https://github.com/paulitoop/cpnginx.git
+    cpnginx_configure_gitlab_configs_version: main
+    cpnginx_configure_gitlab_dir: /tmp/cpnginx-configs
+    cpnginx_configure_gitlab_configs_dir: "{{ cpnginx_configure_gitlab_dir }}/inventory"
+    cpnginx_configure_gitlab_ca_certs_dir: "{{ cpnginx_configure_gitlab_dir }}/certs/ca"
+    cpnginx_configure_gitlab_subca_certs_dir: "{{ cpnginx_configure_gitlab_dir }}/certs/subca"
+    cpnginx_configure_resolve_dns: false
+
+    cpnginx_configure_default_conf: "{{ playbook_dir }}/../files/default.conf"
+    cpnginx_configure_cpnginx_conf: "{{ playbook_dir }}/../files/cpnginx.conf"
+
+    cpnginx_lab_hosts_entries:
+      - ip: 192.168.56.1
+        names:
+          - cpnginx.example.test
+
+  pre_tasks:
+    - name: Add lab host records to /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} ANSIBLE MANAGED CPNGINX LAB HOSTS"
+        block: |
+          {% for entry in cpnginx_lab_hosts_entries | default([]) %}
+          {{ entry.ip }} {{ entry.names | join(' ') }}
+          {% endfor %}
+        create: true
+        mode: '0644'
+      when: (cpnginx_lab_hosts_entries | default([])) | length > 0
+      tags:
+        - lab_hosts
+
+  tasks:
+    - name: Configure cpnginx
+      ansible.builtin.include_role:
+        name: cryptogates.cpnginx_configure

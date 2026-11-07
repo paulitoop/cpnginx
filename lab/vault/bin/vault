@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONTAINER="${VAULT_CONTAINER:-nir-vault}"
+VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
+
+exec docker exec -i \
+  -e "VAULT_ADDR=$VAULT_ADDR" \
+  -e "VAULT_TOKEN=${VAULT_TOKEN:-}" \
+  "$CONTAINER" vault "$@"

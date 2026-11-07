@@ -1,0 +1,6 @@
+---
+- name: Install CryptoPro Nginx
+  ansible.builtin.import_playbook: cpnginx_install.yaml
+
+- name: Configure CryptoPro Nginx
+  ansible.builtin.import_playbook: cpnginx_configure.yaml

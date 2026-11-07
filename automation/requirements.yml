@@ -1,0 +1,9 @@
+---
+- name: cryptogates.cpnginx_install
+  src: https://github.com/paulitoop/ansible-role-cpnginx_install.git
+  scm: git
+  version: main
+- name: cryptogates.cpnginx_configure
+  src: https://github.com/paulitoop/ansible-role-cpnginx_configure.git
+  scm: git
+  version: main

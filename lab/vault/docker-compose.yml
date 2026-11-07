@@ -1,0 +1,21 @@
+---
+name: nir-lab
+
+services:
+  vault:
+    image: hashicorp/vault:1.16
+    container_name: nir-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "0.0.0.0:8200:8200"
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./vault/config:/vault/config:ro
+      - nir-vault-data:/vault/file
+    command: server
+
+volumes:
+  nir-vault-data:

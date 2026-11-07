@@ -1,0 +1,11 @@
+"""Configuration constants for cpnginx."""
+
+CPNGINX_BIN = "/opt/cprocsp/sbin/amd64/cpnginx"
+CERTMGR_BIN = "/opt/cprocsp/bin/amd64/certmgr"
+CPCONFIG_BIN = "/opt/cprocsp/sbin/amd64/cpconfig"
+CPNGINX_USER = "cpnginx"
+CPNGINX_CONF_PATH = "/etc/opt/cprocsp/cpnginx/conf.d/mtls.conf"
+CPNGINX_DEFAULT_CONF_PATH = "/etc/opt/cprocsp/cpnginx/conf.d/default.conf"
+CPNGINX_TEMPLATE_PATH = "/app/templates/mtls.conf.template"
+CPNGINX_DEFAULT_TEMPLATE_PATH = "/app/templates/default.conf.template"
+CA_CERT_DIR = "/app/certs/ca"

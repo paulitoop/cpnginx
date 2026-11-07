@@ -1,0 +1,166 @@
+server {
+    listen 5100 sspi;
+    server_name cpnginx.example.test;
+    sspi_certificate {{ cert_serial }};
+    sspi_protocols TLSv1.2;
+
+    # TLS endpoint
+    location = /tls {
+        default_type text/plain;
+        return 200 "TLS working\n";
+    }
+
+    location / {
+        root /var/opt/cprocsp/cpnginx/html;
+        index  index.html index.htm;
+    }
+}
+
+server {
+    listen 5101 sspi;
+    server_name cpnginx.example.test;
+    sspi_certificate {{ cert_serial }};
+    sspi_client_certificate Root;
+    sspi_verify_client on;
+    sspi_client_verify_local_crl_only on;
+    sspi_protocols TLSv1.2;
+
+    # mTLS endpoint
+    location = /mtls {
+        default_type text/html;
+        charset utf-8;
+        return 200 '<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mTLS passport form</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2933;
+    }
+    main {
+      width: min(420px, calc(100% - 32px));
+      padding: 28px;
+      background: #fff;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+    p {
+      margin: 0 0 20px;
+      color: #52606d;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 700;
+    }
+    input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #b8c2cc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: 6px;
+      background: #1769aa;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Проверка паспортных данных</h1>
+    <p>Демонстрационная форма доступна только после прохождения mTLS.</p>
+    <form method="post" action="/mtls/submit">
+      <label for="series">Серия</label>
+      <input id="series" name="series" inputmode="numeric" pattern="[0-9]{4}" placeholder="1234" required>
+      <label for="number">Номер</label>
+      <input id="number" name="number" inputmode="numeric" pattern="[0-9]{6}" placeholder="567890" required>
+      <button type="submit">Отправить</button>
+    </form>
+  </main>
+</body>
+</html>';
+    }
+
+    location = /mtls/submit {
+        default_type text/html;
+        charset utf-8;
+        return 200 '<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mTLS form submitted</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2933;
+    }
+    main {
+      width: min(420px, calc(100% - 32px));
+      padding: 28px;
+      background: #fff;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+    p {
+      margin: 0 0 20px;
+      color: #52606d;
+      line-height: 1.45;
+    }
+    a {
+      color: #1769aa;
+      font-weight: 700;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Данные отправлены</h1>
+    <p>Демонстрационный mTLS-запрос успешно обработан.</p>
+    <a href="/mtls">Вернуться к форме</a>
+  </main>
+</body>
+</html>';
+    }
+
+    location / {
+        root /var/opt/cprocsp/cpnginx/html;
+        index  index.html index.htm;
+    }
+}

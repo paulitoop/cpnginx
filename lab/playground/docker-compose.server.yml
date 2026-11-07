@@ -1,0 +1,30 @@
+services:
+  cpnginx-server-test:
+    image: cpnginx-playground-server:latest
+    hostname: cpnginx-server-test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ROLE: server
+    container_name: cpnginx-server-test
+    env_file:
+      - server/.env
+    platform: linux/x86_64
+    volumes:
+      - ./server/keys:/app/keys
+    ports:
+      - "0.0.0.0:5100:5100"
+      - "0.0.0.0:5101:5101"
+      - "0.0.0.0:8080:8080"
+    networks:
+      cpnginx-network:
+        ipv4_address: 172.28.0.10
+
+networks:
+  cpnginx-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

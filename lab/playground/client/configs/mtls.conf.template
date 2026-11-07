@@ -1,0 +1,28 @@
+server {
+    listen 10000;
+
+    location / {
+        proxy_sspi on;
+        proxy_ssl_verify on;
+        proxy_ssl_server_name on;
+        proxy_ssl_name cpnginx.example.test;
+        proxy_ssl_trusted_certificate Root;
+        proxy_pass https://cpnginx.example.test:5100;
+    }
+}
+
+
+server {
+    listen 10001;
+
+    location / {
+        proxy_sspi on;
+        proxy_ssl_server_name on;
+        proxy_ssl_name cpnginx.example.test;
+        proxy_ssl_certificate {{ cert_serial }};
+        proxy_pass https://cpnginx.example.test:5101;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate Root;
+        proxy_ssl_verify_local_crl_only on;
+    }
+}

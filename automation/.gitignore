@@ -1,0 +1,4 @@
+.ansible/
+playbooks/roles/
+files/sa-git-key.json
+*unencrypted*

@@ -1,0 +1,57 @@
+services:
+  cpnginx-server-test:
+    image: cpnginx-server:local
+    hostname: cpnginx-server-test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ROLE: server
+    container_name: cpnginx-server-test
+    env_file:
+      - server/.env
+    platform: linux/x86_64
+    volumes:
+      - ./server/keys:/app/keys
+    ports:
+      - "5100:5100"
+      - "5101:5101"
+      - "8080:8080"
+    networks:
+      cpnginx-network:
+        ipv4_address: 172.28.0.10
+
+  cpnginx-client-test:
+    image: cpnginx-client:local
+    hostname: cpnginx-client-test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ROLE: client
+    container_name: cpnginx-client-test
+    env_file:
+      - client/.env
+    platform: linux/x86_64
+    volumes:
+      - ./client/keys:/app/keys
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "8081:8081"
+    networks:
+      cpnginx-network:
+        ipv4_address: 172.28.0.11
+    depends_on:
+      - cpnginx-server-test
+    extra_hosts:
+      - "cpnginx.example.test:172.28.0.10"
+      - "cpnginx-server-test:172.28.0.10"
+
+networks:
+  cpnginx-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

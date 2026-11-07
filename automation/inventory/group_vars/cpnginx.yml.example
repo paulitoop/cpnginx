@@ -1,0 +1,7 @@
+---
+# Скопируйте в cpnginx.yml. Файл cpnginx.yml исключён из Git.
+# По умолчанию используется SSH-ключ. Пароль sudo вводится через -K.
+ansible_user: "{{ lookup('env', 'CPNGINX_SSH_USER') | default('ubuntu', true) }}"
+ansible_python_interpreter: /usr/bin/python3
+cpnginx_configure_vault_role_id: "{{ lookup('env', 'VAULT_ROLE_ID') }}"
+cpnginx_configure_vault_secret_id: "{{ lookup('env', 'VAULT_SECRET_ID') }}"
