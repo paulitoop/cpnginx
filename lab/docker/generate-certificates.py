@@ -40,7 +40,8 @@ root_dn = 'CN=CPNGINX Lab Root'
 subprocess.run(['python3', '/usr/local/bin/init-rng.py'], check=True)
 ca_pin = secrets.token_hex(24)
 run([csptest, '-minica', '-root', '-dn', root_dn, '-provtype', '80',
-     '-container', 'lab-ca', '-password', ca_pin, '-keytype', 'exchange', '-until', '730',
+     '-container', 'lab-ca', '-password', ca_pin, '-keytype', 'signature',
+     '-keyusage', '134', '-until', '730',
      '-fcert', str(assets/'root.cer')])
 for name, usage in [('server', '1.3.6.1.5.5.7.3.1'), ('client', '1.3.6.1.5.5.7.3.2')]:
     dn = 'CN=cpnginx.example.test' if name == 'server' else 'CN=CPNGINX Lab Client'
