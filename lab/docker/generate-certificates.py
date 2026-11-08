@@ -39,6 +39,7 @@ def run(args):
 root_dn = 'CN=CPNGINX Lab Root'
 subprocess.run(['python3', '/usr/local/bin/init-rng.py'], check=True)
 ca_pin = secrets.token_hex(24)
+# CA key usage: digitalSignature (0x80), keyCertSign (0x04), cRLSign (0x02).
 run([csptest, '-minica', '-root', '-dn', root_dn, '-provtype', '80',
      '-container', 'lab-ca', '-password', ca_pin, '-keytype', 'signature',
      '-keyusage', '134', '-until', '730',
