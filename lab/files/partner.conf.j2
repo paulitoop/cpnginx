@@ -11,7 +11,7 @@ server {
     sspi_client_certificate Root;
     sspi_verify_client on;
     sspi_client_verify_local_crl_only on;
-    location = /mtls {
+    location ~ ^/(mtls)?$ {
         default_type text/html;
         charset utf-8;
         return 200 '<!doctype html><html lang="ru"><meta charset="utf-8"><title>mTLS OK</title><h1>Доступ через ГОСТ mTLS</h1><p>Клиентский сертификат успешно проверен.</p></html>';

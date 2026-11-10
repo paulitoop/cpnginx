@@ -21,10 +21,12 @@ LAB = Path(__file__).resolve().parent
 REPO = LAB.parent
 STATE = Path(os.environ.get('LAB_STATE_DIR', Path.home()/'.local/state/cpnginx-lab')).resolve()
 IMAGE = 'cpnginx-lab-ubuntu:local'
+GATEWAY_IMAGE = 'cpnginx-lab-gateway:local'
 VAULT_IMAGE = 'hashicorp/vault:1.16.3'
 GIT_URL = 'https://github.com/paulitoop/cpnginx.git'
 VAULT_URL = 'http://127.0.0.1:18200'
 SECRET_PATH = 'cpnginx/data/demo/client'
+LICENSE_PATH = 'cpnginx/data/licenses/partner'
 os.environ['LAB_STATE_DIR'] = str(STATE)
 os.umask(0o077)
 
@@ -100,11 +102,44 @@ def bootstrap_vault():
     auth = api('sys/auth', token=token)
     if 'approle/' not in auth:
         api('sys/auth/approle', {'type': 'approle'}, token=token)
-    api('sys/policies/acl/cpnginx-demo', {'policy': 'path "cpnginx/data/demo/*" { capabilities = ["read"] }'}, method='PUT', token=token)
-    api('auth/approle/role/cpnginx-demo', {'token_policies': ['cpnginx-demo'], 'token_ttl': '1h', 'token_max_ttl': '4h', 'secret_id_ttl': '24h'}, token=token)
-    role_id = api('auth/approle/role/cpnginx-demo/role-id', token=token)['data']['role_id']
-    secret_id = api('auth/approle/role/cpnginx-demo/secret-id', {}, token=token)['data']['secret_id']
-    save(STATE/'approle.json', {'role_id': role_id, 'secret_id': secret_id})
+    save(STATE/'approle.json', vault_credentials('cpnginx-demo', 'cpnginx/data/demo/*'))
+
+
+def vault_credentials(role, path):
+    token = root_token()
+    api(f'sys/policies/acl/{role}', {'policy': f'path "{path}" {{ capabilities = ["read"] }}'}, method='PUT', token=token)
+    endpoint = f'auth/approle/role/{role}'
+    api(endpoint, {'token_policies': [role], 'token_ttl': '1h', 'token_max_ttl': '4h', 'secret_id_ttl': '24h'}, token=token)
+    role_id = api(endpoint+'/role-id', token=token)['data']['role_id']
+    secret_id = api(endpoint+'/secret-id', {}, token=token)['data']['secret_id']
+    return {'role_id': role_id, 'secret_id': secret_id}
+
+
+def seed_license(source):
+    legacy = STATE/'server.license'
+    try:
+        current = api(LICENSE_PATH, token=root_token())['data']['data']['license']
+    except LabError as error:
+        if 'HTTP 404' not in str(error):
+            raise
+        current = ''
+    if source:
+        value = Path(source).expanduser().read_text().strip()
+    elif current:
+        return False
+    else:
+        value = legacy.read_text().strip() if legacy.is_file() else ''
+    if not value:
+        raise LabError('Provide a TLS Server license with prepare --license-file')
+    if value == current:
+        return False
+    # Verify before writing a new version of the secret. stdin avoids passing the
+    # key as an argument to the host Docker command.
+    run(['docker', 'run', '--rm', '-i', '--network', 'none', '--entrypoint', 'python3', IMAGE,
+         '-c', 'import sys; sys.path.insert(0, "/usr/local/bin"); from lab_license import install_license; install_license(sys.stdin.read().strip())'],
+        input=value, capture=True)
+    api(LICENSE_PATH, {'data': {'license': value}}, token=root_token())
+    return True
 
 
 def certificate_info(path):
@@ -126,26 +161,20 @@ def prepare(args):
         if not shutil.which(command):
             raise LabError(f'{command} is missing. Enable Docker Desktop WSL integration and install Ubuntu prerequisites listed in lab/README.md')
     run(['docker', 'info', '--format', '{{.OSType}}'], capture=True)
-    archive = Path(args.archive or os.environ.get('CPNGINX_CSP_ARCHIVE', '/opt/work/ansible/ansible-role-cpnginx_install-master/files/linux-amd64_deb.tgz'))
-    if not archive.is_file():
-        raise LabError('Provide the local CryptoPro distribution: prepare --archive /absolute/path/linux-amd64_deb.tgz')
-    license_path = STATE/'server.license'
-    if args.license_file:
-        source = Path(args.license_file).expanduser().resolve()
-        if not source.is_file():
-            raise LabError('The TLS server license file does not exist')
-        if source != license_path:
-            shutil.copyfile(source, license_path)
-    elif not license_path.exists():
-        license_path.write_text('')
-    license_path.chmod(0o600)
     build = STATE/'build'
+    bundled = REPO.parent/'ansible-role-cpnginx_install/files/linux-amd64_deb.tgz'
+    cached = build/'dist/linux-amd64_deb.tgz'
+    archive = Path(args.archive or os.environ.get('CPNGINX_CSP_ARCHIVE') or (bundled if bundled.is_file() else cached)).expanduser().resolve()
+    if not archive.is_file():
+        raise LabError(f'Place the CryptoPro archive at {bundled} or use prepare --archive')
     (build/'dist').mkdir(parents=True, exist_ok=True)
-    shutil.copy2(archive, build/'dist/linux-amd64_deb.tgz')
+    if archive != cached:
+        shutil.copyfile(archive, cached)
     for folder in ['docker', 'files']:
         shutil.copytree(LAB/folder, build/folder, dirs_exist_ok=True)
-    print('Building the Ubuntu/CryptoPro image (no keys or passwords are in the build context)...', flush=True)
-    run(['docker', 'build', '-t', IMAGE, '-f', build/'docker/Ubuntu.Dockerfile', build])
+    print('Building clean Ubuntu gateways and the separate CryptoPro partner image...', flush=True)
+    for target, image in [('gateway', GATEWAY_IMAGE), ('partner', IMAGE)]:
+        run(['docker', 'build', '--target', target, '-t', image, '-f', build/'docker/Ubuntu.Dockerfile', build])
     run(['docker', 'pull', VAULT_IMAGE])
     venv = STATE/'venv'
     if not (venv/'bin/python').exists():
@@ -165,7 +194,7 @@ def prepare(args):
                 raise LabError(f'Local role source not found: {src}')
             if destination.exists():
                 shutil.rmtree(destination)
-            shutil.copytree(src, destination, ignore=shutil.ignore_patterns('.git', '__pycache__', 'reports'))
+            shutil.copytree(src, destination, ignore=shutil.ignore_patterns('.git', '__pycache__', 'reports', '*.tgz'))
             revisions[repository] = 'local working tree'
         else:
             if not (destination/'.git').exists():
@@ -217,6 +246,7 @@ def prepare(args):
     save(STATE/'manifest.json', {'roles': revisions, 'server': server, 'client': client, 'image': run(['docker', 'image', 'inspect', IMAGE, '--format', '{{.Id}}'], capture=True).stdout.strip()})
     print(f'Prepared. Local state: {STATE}\nVault JSON: {STATE}/vault-payload.json\nGitHub YAML: {STATE}/demo-mtls.yaml')
     print('Browser prerequisite: map cpnginx.example.test to 127.0.0.1 and explicitly trust assets/root.cer in your GOST browser. No Windows trust/hosts changes were made.')
+    up(args.nodes, fresh=True, license_source=args.license_file)
 
 
 def inventory(nodes):
@@ -232,17 +262,22 @@ def inventory(nodes):
     }}}}})
 
 
-def up(nodes):
+def up(nodes, fresh=False, license_source=None):
     require_prepared()
-    license_path = STATE/'server.license'
-    if not license_path.is_file() or not license_path.read_text().strip():
-        raise LabError('Provide your appropriate TLS Server license first: prepare --license-file /private/path/tls-server.license. Ordinary Demo CSP did not support server TLS in this image')
+    started = time.monotonic()
+    start = ('up', '-d', '--wait', '--wait-timeout', '120', '--no-build', '--pull', 'never')
+    compose(*start, 'vault')
+    bootstrap_vault()
+    changed = seed_license(license_source)
+    save(STATE/'partner-auth/approle.json', vault_credentials('cpnginx-partner', LICENSE_PATH))
+    compose(*start, *(['--force-recreate'] if changed else []), 'partner')
+    (STATE/'server.license').unlink(missing_ok=True)
+    if fresh:
+        compose('rm', '-s', '-f', 'proxy01', 'proxy02', two=True)
     if nodes == 1:
         compose('rm', '-s', '-f', 'proxy02', two=True, check=False, capture=True)
-    services = ['vault', 'partner', 'proxy01'] + (['proxy02'] if nodes == 2 else [])
-    started = time.monotonic()
-    compose('up', '-d', '--wait', '--wait-timeout', '120', '--no-build', '--pull', 'never', *services, two=nodes == 2)
-    bootstrap_vault()
+    services = ['proxy01'] + (['proxy02'] if nodes == 2 else [])
+    compose(*start, *services, two=nodes == 2)
     keys = []
     for i in range(1, nodes+1):
         scan = run(['ssh-keyscan', '-T', '5', '-p', str(2220+i), '127.0.0.1'], capture=True)
@@ -256,7 +291,7 @@ def up(nodes):
     print('Vault: http://localhost:18200 (lab.sh token prints the local demo root token)')
     print('Direct TLS: https://cpnginx.example.test:15100/tls')
     print('Direct mTLS: https://cpnginx.example.test:15101/mtls')
-    print('Proxy: http://localhost:18080/mtls'+(' and http://localhost:18081/mtls' if nodes == 2 else ''))
+    print('Gateway: http://localhost:18080/'+(' and http://localhost:18081/' if nodes == 2 else ''))
 
 
 def source_snapshot(cached):
@@ -286,9 +321,12 @@ def configure(args):
     require_prepared()
     if not (STATE/'run.json').exists():
         raise LabError('Start the lab first')
+    nodes = load(STATE/'run.json')['nodes']
+    if not all(gateway_installed(i, nodes) for i in range(1, nodes+1)):
+        raise LabError('Run ./lab/lab.sh install on the clean gateways before configure')
     # Refresh machine credentials, including after a long pause before the presentation.
     bootstrap_vault()
-    inventory(load(STATE/'run.json')['nodes'])
+    inventory(nodes)
     directory = Path(args.configs_dir).resolve() if args.configs_dir else source_snapshot(args.cached)
     if not directory.is_dir():
         raise LabError('The integration directory is missing. Publish the new format under integrations/demo or use --configs-dir explicitly')
@@ -303,16 +341,40 @@ def configure(args):
         'cpnginx_configure_cpnginx_conf': str(LAB/'files/cpnginx.conf'),
     }
     (STATE/'assets/subca').mkdir(exist_ok=True)
-    save(STATE/'playbook.json', [{'name': 'Configure portable GOST gateways', 'hosts': 'cpnginx', 'become': True, 'vars': variables, 'roles': ['cryptogates.cpnginx_configure']}])
+    playbook({'name': 'Configure portable GOST gateways', 'vars': variables,
+              'roles': ['cryptogates.cpnginx_configure']})
+
+
+def install():
+    require_prepared()
+    if not (STATE/'run.json').exists():
+        raise LabError('Start the lab first')
+    run_playbook(LAB/'playbooks/install.yml')
+
+
+def playbook(play):
+    path = STATE/'playbook.json'
+    save(path, [{'hosts': 'cpnginx', 'become': True, **play}])
+    run_playbook(path)
+
+
+def run_playbook(path):
     env = os.environ.copy()
     env['ANSIBLE_CONFIG'] = str(STATE/'ansible.cfg')
     env['ANSIBLE_LOCAL_TEMP'] = str(STATE/'ansible-tmp')
     env['PATH'] = str(STATE/'bin')+':'+str(STATE/'venv/bin')+':'+env['PATH']
-    run([STATE/'venv/bin/ansible-playbook', '-i', STATE/'inventory.json', STATE/'playbook.json'], env=env)
+    run([STATE/'venv/bin/ansible-playbook', '-i', STATE/'inventory.json', path], env=env)
+
+
+def gateway_installed(index, nodes):
+    result = compose('exec', '-T', f'proxy{index:02d}', 'sh', '-c',
+                     'if test -x /opt/cprocsp/sbin/amd64/cpnginx; then echo installed; else echo clean; fi',
+                     two=nodes == 2, capture=True)
+    return result.stdout.strip() == 'installed'
 
 
 def probe(port):
-    return compose('exec', '-T', '--user', 'lab', 'proxy01', '/opt/cprocsp/bin/amd64/csptest', '-tlsc',
+    return compose('exec', '-T', '--user', 'lab', 'partner', '/opt/cprocsp/bin/amd64/csptest', '-tlsc',
                    '-server', 'cpnginx.example.test', '-port', str(port), '-file', '/tls' if port == 5100 else '/mtls',
                    '-proto', '6', '-exchange', '3', '-autocheck', '-nosave', '-silent', capture=True, check=False)
 
@@ -345,18 +407,23 @@ def check(stage):
     print('PASS: GOST TLS control; direct mTLS without a client key is rejected')
     successes = 0
     for i in range(nodes):
+        if stage == 'before' and gateway_installed(i+1, nodes):
+            raise LabError(f'proxy{i+1:02d}: expected clean Ubuntu; run reset-demo')
         try:
-            with urllib.request.urlopen(f'http://127.0.0.1:{18080+i}/mtls', timeout=15) as response:
+            with urllib.request.urlopen(f'http://127.0.0.1:{18080+i}/', timeout=15) as response:
                 body = response.read().decode()
                 ok = response.status == 200 and 'Доступ через ГОСТ mTLS' in body
+                welcome = response.status == 200 and 'Welcome to nginx!' in body
         except (urllib.error.URLError, OSError):
-            ok = False
+            ok = welcome = False
+        if stage == 'installed' and not welcome:
+            raise LabError(f'proxy{i+1:02d}: welcome page is not available; run install')
         successes += int(ok)
         if stage == 'after' and not ok:
             raise LabError(f'proxy{i+1:02d}: protected page is not available')
         if stage == 'before' and ok:
             raise LabError('The gateway is already configured; run reset-demo before the initial demonstration')
-        print(f'proxy{i+1:02d}: '+('protected page is available' if ok else 'not configured / unavailable'))
+        print(f'proxy{i+1:02d}: '+('protected page is available' if ok else 'welcome page is available' if welcome else 'not configured / unavailable'))
     print(f'Check complete: {successes}/{nodes} proxies serve the protected page')
 
 
@@ -371,14 +438,16 @@ def main():
     p.add_argument('--license-file', help='Private file with your appropriate CryptoPro TLS Server license')
     p.add_argument('--local-roles', action='store_true', help='Development: copy sibling role working trees instead of fetching GitHub')
     p.add_argument('--renew-certs', action='store_true')
+    p.add_argument('--nodes', type=int, choices=[1, 2], default=1)
     p = sub.add_parser('up'); p.add_argument('--nodes', type=int, choices=[1, 2], default=1)
     p = sub.add_parser('configure'); p.add_argument('--cached', action='store_true'); p.add_argument('--configs-dir')
-    p = sub.add_parser('check'); p.add_argument('--stage', choices=['before', 'after', 'auto'], default='auto')
-    for name in ['reset-demo', 'down', 'status', 'token']:
+    p = sub.add_parser('check'); p.add_argument('--stage', choices=['before', 'installed', 'after', 'auto'], default='auto')
+    for name in ['install', 'reset-demo', 'down', 'status', 'token']:
         sub.add_parser(name)
     args = parser.parse_args()
     if args.command == 'prepare': prepare(args)
     elif args.command == 'up': up(args.nodes)
+    elif args.command == 'install': install()
     elif args.command == 'configure': configure(args)
     elif args.command == 'check': check(args.stage)
     elif args.command == 'down': compose('down', two=True)

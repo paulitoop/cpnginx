@@ -1,0 +1,24 @@
+---
+- name: Install CryptoPro Nginx on Ubuntu gateways
+  hosts: cpnginx
+  become: true
+  vars:
+    cpnginx_install_deb_packet: "{{ lookup('env', 'LAB_STATE_DIR') }}/build/dist/linux-amd64_deb.tgz"
+    cpnginx_install_default_conf: "{{ playbook_dir }}/../files/welcome.conf"
+    cpnginx_install_cpnginx_conf: "{{ playbook_dir }}/../files/cpnginx.conf"
+  tasks:
+    - name: Run the CryptoPro Nginx installation role
+      ansible.builtin.import_role:
+        name: cryptogates.cpnginx_install
+
+    - name: Give the gateway service access to lab CPSD
+      ansible.builtin.user:
+        name: cpnginx
+        groups: lab-rng
+        append: true
+      notify: Reload cpnginx
+
+    - name: Initialize lab CPSD
+      ansible.builtin.command:
+        argv: [python3, /usr/local/bin/init-rng.py]
+        creates: /var/opt/cprocsp/dsrf/db1/kis_1

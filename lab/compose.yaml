@@ -1,13 +1,12 @@
 name: cpnginx-demo
 x-node: &node
-  image: cpnginx-lab-ubuntu:local
+  image: cpnginx-lab-gateway:local
   cpus: 1.0
   mem_limit: 512m
   volumes:
     - ${LAB_STATE_DIR}/ssh/id_ed25519.pub:/run/lab/authorized_keys:ro
-    - ${LAB_STATE_DIR}/assets/ca:/run/lab/ca:ro
   healthcheck:
-    test: [CMD-SHELL, "pgrep sshd >/dev/null && /opt/cprocsp/sbin/amd64/cpnginx -t"]
+    test: [CMD-SHELL, "pgrep -x sshd >/dev/null"]
     interval: 3s
     timeout: 3s
     retries: 30
@@ -31,12 +30,7 @@ services:
     volumes:
       - ${LAB_STATE_DIR}/assets/server.pfx:/run/lab/server.pfx:ro
       - ${LAB_STATE_DIR}/assets/server.pin:/run/lab/server.pin:ro
-      - type: bind
-        source: ${LAB_STATE_DIR}/server.license
-        target: /run/lab/server.license
-        read_only: true
-        bind:
-          create_host_path: false
+      - ${LAB_STATE_DIR}/partner-auth:/run/lab-vault:ro
       - ${LAB_STATE_DIR}/assets/ca:/run/lab/ca:ro
     ports:
       - 127.0.0.1:15100:5100
