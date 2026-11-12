@@ -1,0 +1,7 @@
+name: demo-mtls
+target_host: cpnginx.example.test
+target_port: 5101
+listen_port: 30443
+cert_client: cpnginx/data/demo/client
+cert_client_serial: "0x3773D82B92DFA821"
+comment: "Portable GOST mTLS demo"
