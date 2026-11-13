@@ -3,5 +3,5 @@ target_host: 127.0.0.1
 target_port: 5101
 listen_port: 30443
 cert_client: cpnginx/data/demo/client
-cert_client_serial: "0x2FDF64D33233549Bм"
+cert_client_serial: "0x2FDF64D33233549B"
 comment: "Portable GOST mTLS demo"
